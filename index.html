@@ -671,16 +671,16 @@ function renderOverview(data, contentId, subId, city) {
   // สีสำหรับแต่ละกลุ่ม (auto palette)
   const PIE_COLORS = ['#2563eb','#e07b1e','#16a34a','#dc2626','#9333ea','#0891b2','#d97706','#db2777','#65a30d','#ea580c','#7c3aed','#0284c7'];
 
-  function buildPie(slices, title, colorBase) {
-    // slices = [{name, value}], value คือสัดส่วนเฉลี่ย%
+  function buildPie(slices, title) {
     const total = slices.reduce((s,sl)=>s+sl.value,0);
     if (!total) return `<div class="pie-block"><div class="pie-title">${title}</div><div style="color:var(--muted);font-size:.75rem">ไม่มีข้อมูล</div></div>`;
 
+    // วาด pie โดยใช้ค่าจริง (ไม่ normalize เป็น 100%)
+    // ส่วนที่เหลือ (ไม่ได้ขาย) = พื้นที่สีเทา
     const cx=90, cy=90, r=80;
     let paths='', angle=-Math.PI/2;
     const legItems = slices.map((sl,i) => {
-      const pct = sl.value/total*100;
-      const sweep = pct/100 * Math.PI*2;
+      const sweep = sl.value/100 * Math.PI*2;
       const x1=cx+r*Math.cos(angle), y1=cy+r*Math.sin(angle);
       angle+=sweep;
       const x2=cx+r*Math.cos(angle), y2=cy+r*Math.sin(angle);
@@ -688,17 +688,35 @@ function renderOverview(data, contentId, subId, city) {
       const col=PIE_COLORS[i%PIE_COLORS.length];
       paths+=`<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${large},1 ${x2.toFixed(2)},${y2.toFixed(2)} Z"
         fill="${col}" stroke="white" stroke-width="1.5">
-        <title>${sl.name}: ${pct.toFixed(1)}%</title>
+        <title>${sl.name}: ${sl.value.toFixed(2)}%</title>
       </path>`;
       return `<div class="pie-leg-item">
         <div class="pie-leg-dot" style="background:${col}"></div>
         <div class="pie-leg-name">${sl.name}</div>
-        <div class="pie-leg-val">${pct.toFixed(1)}%</div>
+        <div class="pie-leg-val">${sl.value.toFixed(2)}%</div>
       </div>`;
     });
+    // ส่วนที่เหลือ (ยังไม่ขายออก)
+    const remaining = 100 - total;
+    if (remaining > 0.01) {
+      const sweep = remaining/100 * Math.PI*2;
+      const x1=cx+r*Math.cos(angle), y1=cy+r*Math.sin(angle);
+      angle+=sweep;
+      const x2=cx+r*Math.cos(angle), y2=cy+r*Math.sin(angle);
+      const large=sweep>Math.PI?1:0;
+      paths+=`<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${large},1 ${x2.toFixed(2)},${y2.toFixed(2)} Z"
+        fill="#e5e7eb" stroke="white" stroke-width="1.5">
+        <title>ยังไม่ขายออก: ${remaining.toFixed(2)}%</title>
+      </path>`;
+      legItems.push(`<div class="pie-leg-item">
+        <div class="pie-leg-dot" style="background:#e5e7eb;border:1px solid #d1d5db"></div>
+        <div class="pie-leg-name" style="color:var(--muted)">ยังไม่ขายออก</div>
+        <div class="pie-leg-val" style="color:var(--muted)">${remaining.toFixed(2)}%</div>
+      </div>`);
+    }
 
     return `<div class="pie-block">
-      <div class="pie-title">${title}</div>
+      <div class="pie-title">${title}<br><span style="font-size:.7rem;color:var(--muted)">รวมขายออก ${total.toFixed(2)}%</span></div>
       <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;justify-content:center">
         <svg width="180" height="180" viewBox="0 0 180 180">${paths}</svg>
         <div class="pie-legend">${legItems.join('')}</div>
@@ -715,8 +733,8 @@ function renderOverview(data, contentId, subId, city) {
   <div class="box">
     <div class="box-head">📊 Pie Chart <span style="color:var(--muted);font-weight:400;font-size:.75rem">— สัดส่วนขายออกเฉลี่ยแต่ละกลุ่ม</span></div>
     <div class="pie-wrap">
-      ${buildPie(pieSlices68,'ปี 2568 (เต็มปี · เฉลี่ย 12 เดือน)','#2563eb')}
-      ${buildPie(pieSlices69,`ปี 2569 (ม.ค.–${mEnd} · เฉลี่ย ${nM} เดือน)`,'#e07b1e')}
+      ${buildPie(pieSlices68,'ปี 2568 (เต็มปี · เฉลี่ย 12 เดือน)')}
+      ${buildPie(pieSlices69,`ปี 2569 (ม.ค.–${mEnd} · เฉลี่ย ${nM} เดือน)`)}
     </div>
   </div>`;
 
