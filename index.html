@@ -125,6 +125,16 @@ tr.tot td.L { font-family:var(--font) }
 .cell-2row .row1 { font-family:var(--mono); }
 .cell-2row .row2 { font-size:.67rem; color:var(--muted); font-family:var(--mono); }
 
+/* PIE CHART */
+.pie-wrap { display:flex; gap:32px; padding:20px 24px; flex-wrap:wrap; align-items:flex-start; justify-content:center }
+.pie-block { display:flex; flex-direction:column; align-items:center; gap:12px }
+.pie-title { font-size:.8rem; font-weight:700; color:var(--muted); text-align:center }
+.pie-legend { display:flex; flex-direction:column; gap:5px; min-width:140px }
+.pie-leg-item { display:flex; align-items:center; gap:7px; font-size:.72rem }
+.pie-leg-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0 }
+.pie-leg-name { flex:1; color:var(--text) }
+.pie-leg-val { font-family:var(--mono); font-size:.7rem; color:var(--muted); font-weight:600 }
+
 @media(max-width:900px) { .cards { grid-template-columns:repeat(3,1fr) } }
 @media(max-width:640px) {
   .cards { grid-template-columns:1fr 1fr }
@@ -330,8 +340,11 @@ function parseSummarySheet(rows) {
     p.diff_pct  =p.sum68_nm?(p.diff_bath/p.sum68_nm*100):null;
   }
   for (const r of ratios) {
-    r.rsum68_full=r.r68.reduce((s,v)=>s+(v||0),0);
-    r.rsum69_nm =r.r69.slice(0,nM).reduce((s,v)=>s+(v||0),0);
+    // average สัดส่วน ไม่ใช่ผลรวม
+    const vals68 = r.r68.filter(v=>v!=null&&v!==0);
+    const vals69 = r.r69.slice(0,nM).filter(v=>v!=null&&v!==0);
+    r.rsum68_full = vals68.length ? vals68.reduce((s,v)=>s+v,0)/vals68.length : 0;
+    r.rsum69_nm   = vals69.length ? vals69.reduce((s,v)=>s+v,0)/vals69.length : 0;
   }
 
   const total68_full=products.reduce((s,p)=>s+p.sum68_full,0);
@@ -434,8 +447,11 @@ function parseOtherSheet(rows) {
     p.sum69_nm   = p.v69.slice(0, nMDisplay).reduce((s,v)=>s+safe(v),0);
     p.diff_bath  = p.sum69_nm - p.sum68_nm;
     p.diff_pct   = p.sum68_nm ? (p.diff_bath/p.sum68_nm*100) : null;
-    p.rsum68_full= p.ratio68.reduce((s,v)=>s+safe(v),0);
-    p.rsum69_nm  = p.ratio69.slice(0,nMDisplay).reduce((s,v)=>s+safe(v),0);
+    // average สัดส่วน
+    const vals68 = p.ratio68.filter(v=>v!=null&&v!==0);
+    const vals69 = p.ratio69.slice(0,nMDisplay).filter(v=>v!=null&&v!==0);
+    p.rsum68_full = vals68.length ? vals68.reduce((s,v)=>s+v,0)/vals68.length : 0;
+    p.rsum69_nm   = vals69.length ? vals69.reduce((s,v)=>s+v,0)/vals69.length : 0;
   }
 
   const total68_full= products.reduce((s,p)=>s+p.sum68_full,0);
@@ -572,8 +588,8 @@ function renderOverview(data, contentId, subId, city) {
     totCells+=s69!=null?`<td style="background:#fff7ed;color:var(--c69);text-align:right;font-family:var(--mono);font-size:.72rem;font-weight:700">${fmt(s69)}</td>`
                        :`<td style="background:#eff6ff;color:#bbb;text-align:center;font-size:.7rem">—</td>`;
   }
-  const tRsum68=ratios.reduce((s,r)=>s+r.rsum68_full,0);
-  const tRsum69=ratios.reduce((s,r)=>s+r.rsum69_nm,0);
+  const tRsum68=ratios.length ? ratios.reduce((s,r)=>s+r.rsum68_full,0)/ratios.length : 0;
+  const tRsum69=ratios.length ? ratios.reduce((s,r)=>s+r.rsum69_nm,0)/ratios.length : 0;
   totCells+=`<td style="background:#eff6ff;color:var(--c68);text-align:right;font-family:var(--mono);font-size:.72rem;font-weight:700">${fmt(total68_full)}<br><span style="font-size:.6rem;color:#1e40af">${tRsum68.toFixed(2)}%</span></td>`;
   totCells+=`<td style="background:#fff7ed;color:var(--c69);text-align:right;font-family:var(--mono);font-size:.72rem;font-weight:700">${fmt(total69_nm)}<br><span style="font-size:.6rem;color:#92400e">${tRsum69.toFixed(2)}%</span></td>`;
   t3rows+=`<tr class="tot-row"><td class="grp" style="font-weight:700">รวมทุกกลุ่ม</td>${totCells}</tr>`;
@@ -583,7 +599,7 @@ function renderOverview(data, contentId, subId, city) {
   <div class="leg">
     <div style="display:flex;align-items:center;gap:5px"><span class="ld" style="background:var(--c68)"></span>2568</div>
     <div style="display:flex;align-items:center;gap:5px"><span class="ld" style="background:var(--c69)"></span>2569</div>
-    <span style="font-size:.72rem;color:var(--muted)">· ตัวเลขเล็ก = สัดส่วนขายออก% · รวม = ผลรวมสัดส่วนทั้งช่วง · เดือนที่ยังไม่มีข้อมูลเว้นว่าง</span>
+    <span style="font-size:.72rem;color:var(--muted)">· ตัวเลขเล็ก = สัดส่วนขายออก% (เฉลี่ย) · รวม = ค่าเฉลี่ยสัดส่วนทั้งช่วง · เดือนที่ยังไม่มีข้อมูลเว้นว่าง</span>
   </div>
   <div class="box" style="overflow-x:auto">
     <table class="tbl-cross">
@@ -599,16 +615,19 @@ function renderOverview(data, contentId, subId, city) {
     const h68=m.s68?Math.round(m.s68/maxM*110):0;
     const h69=m.s69?Math.round(m.s69/maxM*110):0;
     const has69=m.s69>0;
-    const rSum68=ratios.reduce((s,r)=>s+(r.r68[m.m]||0),0);
-    const rSum69=has69?ratios.reduce((s,r)=>s+(r.r69?.[m.m]||0),0):null;
+    // average สัดส่วนเดือนนั้น (เฉพาะกลุ่มที่มีข้อมูล)
+    const r68vals=ratios.map(r=>r.r68[m.m]).filter(v=>v!=null&&v!==0);
+    const r69vals=ratios.map(r=>r.r69?.[m.m]).filter(v=>v!=null&&v!==0);
+    const rAvg68=r68vals.length?r68vals.reduce((s,v)=>s+v,0)/r68vals.length:0;
+    const rAvg69=r69vals.length?r69vals.reduce((s,v)=>s+v,0)/r69vals.length:0;
     chartCols+=`<div class="chart-col">
       <div class="chart-bars">
         <div class="bar" style="background:var(--c68);height:${h68}px" title="2568 ${MONTHS_TH[m.m]}: ${fmt(m.s68)}"></div>
         <div class="bar" style="background:${has69?'var(--c69)':'var(--border)'};height:${has69?h69:4}px;opacity:${has69?1:.3}"></div>
       </div>
       <div class="chart-label">${MONTHS_TH[m.m]}</div>
-      <div class="chart-label" style="font-size:.58rem;color:var(--c68)">${rSum68.toFixed(1)}%</div>
-      ${has69?`<div class="chart-label" style="font-size:.58rem;color:var(--c69)">${rSum69.toFixed(1)}%</div>`:'<div class="chart-label" style="font-size:.58rem"> </div>'}
+      <div class="chart-label" style="font-size:.58rem;color:var(--c68)">${rAvg68.toFixed(1)}%</div>
+      ${has69?`<div class="chart-label" style="font-size:.58rem;color:var(--c69)">${rAvg69.toFixed(1)}%</div>`:'<div class="chart-label" style="font-size:.58rem"> </div>'}
     </div>`;
   }
 
@@ -617,14 +636,16 @@ function renderOverview(data, contentId, subId, city) {
     const has69=m.s69>0;
     const diff=has69?m.s69-m.s68:null;
     const pct=has69&&m.s68?diff/m.s68*100:null;
-    const rSum68=ratios.reduce((s,r)=>s+(r.r68[m.m]||0),0);
-    const rSum69=has69?ratios.reduce((s,r)=>s+(r.r69?.[m.m]||0),0):null;
+    const r68vals=ratios.map(r=>r.r68[m.m]).filter(v=>v!=null&&v!==0);
+    const r69vals=ratios.map(r=>r.r69?.[m.m]).filter(v=>v!=null&&v!==0);
+    const rAvg68=r68vals.length?r68vals.reduce((s,v)=>s+v,0)/r68vals.length:0;
+    const rAvg69=r69vals.length?r69vals.reduce((s,v)=>s+v,0)/r69vals.length:0;
     mRows+=`<tr>
       <td class="L">${MONTHS_TH[m.m]}</td>
       <td>${fmt(m.s68)}</td>
-      <td style="color:var(--muted);font-size:.7rem">${rSum68.toFixed(2)}%</td>
+      <td style="color:var(--muted);font-size:.7rem">${rAvg68.toFixed(2)}%</td>
       <td>${has69?fmt(m.s69):'<span class="m-blank">—</span>'}</td>
-      <td style="color:var(--muted);font-size:.7rem">${rSum69!=null?rSum69.toFixed(2)+'%':'—'}</td>
+      <td style="color:var(--muted);font-size:.7rem">${has69?rAvg69.toFixed(2)+'%':'—'}</td>
       <td>${diff!==null?(diff>=0?'+':'')+fmt(diff):'<span class="m-blank">—</span>'}</td>
       <td>${diff!==null?pctBadge(pct):'<span class="m-blank">—</span>'}</td>
     </tr>`;
@@ -649,7 +670,60 @@ function renderOverview(data, contentId, subId, city) {
     </table>
   </div>`;
 
-  document.getElementById(contentId).innerHTML=cards+tableMonthly+tableCross;
+  // ── PIE CHART ──
+  // สีสำหรับแต่ละกลุ่ม (auto palette)
+  const PIE_COLORS = ['#2563eb','#e07b1e','#16a34a','#dc2626','#9333ea','#0891b2','#d97706','#db2777','#65a30d','#ea580c','#7c3aed','#0284c7'];
+
+  function buildPie(slices, title, colorBase) {
+    // slices = [{name, value}], value คือสัดส่วนเฉลี่ย%
+    const total = slices.reduce((s,sl)=>s+sl.value,0);
+    if (!total) return `<div class="pie-block"><div class="pie-title">${title}</div><div style="color:var(--muted);font-size:.75rem">ไม่มีข้อมูล</div></div>`;
+
+    const cx=90, cy=90, r=80;
+    let paths='', angle=-Math.PI/2;
+    const legItems = slices.map((sl,i) => {
+      const pct = sl.value/total*100;
+      const sweep = pct/100 * Math.PI*2;
+      const x1=cx+r*Math.cos(angle), y1=cy+r*Math.sin(angle);
+      angle+=sweep;
+      const x2=cx+r*Math.cos(angle), y2=cy+r*Math.sin(angle);
+      const large=sweep>Math.PI?1:0;
+      const col=PIE_COLORS[i%PIE_COLORS.length];
+      paths+=`<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${large},1 ${x2.toFixed(2)},${y2.toFixed(2)} Z"
+        fill="${col}" stroke="white" stroke-width="1.5">
+        <title>${sl.name}: ${pct.toFixed(1)}%</title>
+      </path>`;
+      return `<div class="pie-leg-item">
+        <div class="pie-leg-dot" style="background:${col}"></div>
+        <div class="pie-leg-name">${sl.name}</div>
+        <div class="pie-leg-val">${pct.toFixed(1)}%</div>
+      </div>`;
+    });
+
+    return `<div class="pie-block">
+      <div class="pie-title">${title}</div>
+      <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;justify-content:center">
+        <svg width="180" height="180" viewBox="0 0 180 180">${paths}</svg>
+        <div class="pie-legend">${legItems.join('')}</div>
+      </div>
+    </div>`;
+  }
+
+  // คำนวณสัดส่วนเฉลี่ยแต่ละกลุ่ม สำหรับ pie
+  const pieSlices68 = ratios.map(r=>({name:r.name, value:r.rsum68_full})).filter(s=>s.value>0);
+  const pieSlices69 = ratios.map(r=>({name:r.name, value:r.rsum69_nm})).filter(s=>s.value>0);
+
+  const pieSectionHtml = `
+  <div class="sec-title">🥧 สัดส่วนยอดขายแบ่งตามกลุ่ม</div>
+  <div class="box">
+    <div class="box-head">📊 Pie Chart <span style="color:var(--muted);font-weight:400;font-size:.75rem">— สัดส่วนขายออกเฉลี่ยแต่ละกลุ่ม</span></div>
+    <div class="pie-wrap">
+      ${buildPie(pieSlices68,'ปี 2568 (เต็มปี · เฉลี่ย 12 เดือน)','#2563eb')}
+      ${buildPie(pieSlices69,`ปี 2569 (ม.ค.–${mEnd} · เฉลี่ย ${nM} เดือน)`,'#e07b1e')}
+    </div>
+  </div>`;
+
+  document.getElementById(contentId).innerHTML=cards+tableMonthly+pieSectionHtml+tableCross;
 }
 
 // ══════════════════════════════════════════════
