@@ -104,6 +104,60 @@ tr.tot td.L { font-family:var(--font) }
 .tbl-cross td.grp { font-family:var(--font); font-weight:600; text-align:left; white-space:nowrap; min-width:90px }
 .tbl-cross tr.tot-row td { background:#fff7ed; font-weight:700; border-top:2px solid var(--accent) }
 
+/* CROSS TABLE STICKY SCROLL */
+.cross-scroll-wrap {
+  position: relative;
+  overflow: hidden;
+}
+.cross-scroll-top {
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 16px;
+  margin-bottom: 0;
+}
+.cross-scroll-top-inner {
+  height: 1px;
+}
+.cross-scroll-body {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+.cross-scroll-body table.tbl-cross {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+/* sticky header row 1 (ปี-เดือน) */
+.cross-scroll-body table.tbl-cross thead tr:first-child th {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+/* sticky header row 2 (2568/2569) */
+.cross-scroll-body table.tbl-cross thead tr:nth-child(2) th {
+  position: sticky;
+  top: 33px; /* approx height of first header row (padding 6+6 + font ~21) */
+  z-index: 30;
+}
+/* sticky first column (กลุ่มสินค้า) — th */
+.cross-scroll-body table.tbl-cross thead tr:first-child th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 40;
+  background: var(--surface2);
+  box-shadow: 2px 0 4px rgba(0,0,0,.08);
+}
+/* sticky first column — td.grp */
+.cross-scroll-body table.tbl-cross tbody td.grp {
+  position: sticky;
+  left: 0;
+  z-index: 20;
+  background: var(--bg);
+  box-shadow: 2px 0 4px rgba(0,0,0,.06);
+}
+.cross-scroll-body table.tbl-cross tr.tot-row td.grp {
+  background: #fff7ed;
+}
+
 /* GROUP FILTER BUTTONS */
 .grp-filter { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:16px }
 .grp-btn { padding:5px 12px; border-radius:20px; border:1px solid var(--border); background:var(--bg); color:var(--muted); font-family:var(--font); font-size:.75rem; cursor:pointer; transition:all .15s; font-weight:500 }
@@ -594,6 +648,7 @@ function renderOverview(data, contentId, subId, city) {
   totCells+=`<td style="background:#fff7ed;color:var(--c69);text-align:right;font-family:var(--mono);font-size:.72rem;font-weight:700">${fmt(total69_nm)}<br><span style="font-size:.6rem;color:#92400e">${tRsum69.toFixed(2)}%</span></td>`;
   t3rows+=`<tr class="tot-row"><td class="grp" style="font-weight:700">รวมทุกกลุ่ม</td>${totCells}</tr>`;
 
+  const crossId='cross-'+contentId;
   const tableCross=`
   <div class="sec-title">📅 กำไรรายกลุ่ม × รายเดือน (2568 เต็มปี · 2569 ม.ค.–${mEnd})</div>
   <div class="leg">
@@ -601,12 +656,46 @@ function renderOverview(data, contentId, subId, city) {
     <div style="display:flex;align-items:center;gap:5px"><span class="ld" style="background:var(--c69)"></span>2569</div>
     <span style="font-size:.72rem;color:var(--muted)">· ตัวเลขเล็ก = สัดส่วนขายออก% (เฉลี่ย) · รวม = ค่าเฉลี่ยสัดส่วนทั้งช่วง · เดือนที่ยังไม่มีข้อมูลเว้นว่าง</span>
   </div>
-  <div class="box" style="overflow-x:auto">
-    <table class="tbl-cross">
-      <thead><tr>${th1}</tr><tr>${th2}</tr></thead>
-      <tbody>${t3rows}</tbody>
-    </table>
-  </div>`;
+  <div class="box" style="overflow:hidden">
+    <div class="cross-scroll-wrap" id="${crossId}-wrap">
+      <div class="cross-scroll-top" id="${crossId}-top">
+        <div class="cross-scroll-top-inner" id="${crossId}-top-inner"></div>
+      </div>
+      <div class="cross-scroll-body" id="${crossId}-body">
+        <table class="tbl-cross" id="${crossId}-tbl">
+          <thead><tr>${th1}</tr><tr>${th2}</tr></thead>
+          <tbody>${t3rows}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var top=document.getElementById('${crossId}-top');
+    var body=document.getElementById('${crossId}-body');
+    var inner=document.getElementById('${crossId}-top-inner');
+    var tbl=document.getElementById('${crossId}-tbl');
+    function syncTopWidth(){
+      if(tbl) inner.style.width=tbl.scrollWidth+'px';
+    }
+    syncTopWidth();
+    var syncing=false;
+    top.addEventListener('scroll',function(){
+      if(syncing)return; syncing=true;
+      body.scrollLeft=top.scrollLeft;
+      syncing=false;
+    });
+    body.addEventListener('scroll',function(){
+      if(syncing)return; syncing=true;
+      top.scrollLeft=body.scrollLeft;
+      syncing=false;
+    });
+    // update width after fonts load
+    if(document.fonts&&document.fonts.ready)
+      document.fonts.ready.then(syncTopWidth);
+    setTimeout(syncTopWidth,600);
+  })();
+  <\/script>`;
 
   // BAR CHART
   const maxM=Math.max(...monthly.map(m=>Math.max(m.s68,m.s69)),1);
